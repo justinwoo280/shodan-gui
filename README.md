@@ -89,4 +89,4 @@ In the Search view, click **Export** → set **Scope** to **All results** → co
 
 ## License
 
- [MIT](./LICENCE)
+ [MIT](./LICENSE)
