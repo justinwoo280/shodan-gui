@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -16,14 +16,14 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: "1.23"
           cache: true
           cache-dependency-path: go.sum
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Wails
@@ -46,45 +46,51 @@ jobs:
           prerelease: false
 
   release-macos:
-    runs-on: macos-latest
+    # Use native runners for each architecture to avoid CGo cross-compilation issues.
+    # macos-13 = Intel x86_64 (amd64), macos-latest = Apple Silicon arm64.
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
           - arch: amd64
             name: shodan-gui-darwin-amd64
+            runner: macos-13
           - arch: arm64
             name: shodan-gui-darwin-arm64
+            runner: macos-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: "1.23"
           cache: true
           cache-dependency-path: go.sum
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
+      # No GOARCH/GOOS overrides — each job runs on its native architecture.
+      # wails build outputs a .app bundle at build/bin/shodan-gui.app on macOS,
+      # not a flat binary at build/bin/shodan-gui.
       - name: Build
         run: wails build
-        env:
-          GOARCH: ${{ matrix.arch }}
-          GOOS: darwin
 
-      - name: Rename binary
-        run: mv build/bin/shodan-gui ${{ matrix.name }}
+      - name: Package .app bundle
+        run: cd build/bin && zip -r ../../${{ matrix.name }}.zip shodan-gui.app
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.name }}
+          files: ${{ matrix.name }}.zip
+          draft: false
+          prerelease: false
 
   release-linux:
     runs-on: ubuntu-22.04
@@ -93,14 +99,14 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: "1.23"
           cache: true
           cache-dependency-path: go.sum
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install system dependencies
